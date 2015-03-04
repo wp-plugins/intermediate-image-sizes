@@ -2,7 +2,7 @@
 /*
 Plugin Name: Intermediate Image Sizes
 Description: Create thumbnails on the fly instead of storing them on disk
-Version: 0.3.1
+Version: 0.3.2
 Author: Headspin <vegard@headspin.no>
 Author URI: http://www.headspin.no
 Licence: GPL2

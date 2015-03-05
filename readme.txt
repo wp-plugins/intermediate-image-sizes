@@ -3,7 +3,7 @@ Contributors: veloek
 Tags: image, thumbnail, media, library
 Requires at least: 3.0
 Tested up to: 4.1.1
-Stable tag: 0.3.2
+Stable tag: 0.3.3
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,18 +17,21 @@ You should use this plugin if you prefer to save disk space rather than CPU. You
 
 Reads size from URL. You need only add -[width]x[height] to the image path (like regular WordPress thumbnails). Ex: image-100x100.jpg. Size 0 means auto. With both sizes set, it crops to the center.
 
-WARNING: The plugin deletes all current thumbnails and stops Wordpress from generating new thumbnails to keep it clean. Remember this before deactivating. You will need a [plugin](https://wordpress.org/plugins/regenerate-thumbnails/ "Regenerate Thumbnails") to regenerate thumbnails.
-
-== Installation ==
-
-* Upload
-* Activate
-* Go test your custom thumbnail sizes
+WARNING: This plugin deletes all current thumbnails and stops Wordpress from generating new thumbnails to keep the uploads folder clean of unnecessary files. If you ever choose to disable this plugin, use a plugin like [Regenerate Thumbnails](https://wordpress.org/plugins/regenerate-thumbnails/) to, well, regenerate the thumbnails.
 
 == Changelog ==
+
+= 0.3.3 =
+* Safer removal of thumbnail on activation
+* Rename class name for consistency
+
+= 0.3.2 =
+* Readme changes
 
 = 0.3.1 =
 * Initial release
 
-= 0.3.2 =
-* Readme changes
+== Upgrade Notice ==
+
+= 0.3.3 =
+IMPORTANT! Deactivate old version before upgrading to 0.3.3 and then activate new version

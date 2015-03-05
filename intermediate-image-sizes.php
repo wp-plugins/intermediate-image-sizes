@@ -2,12 +2,12 @@
 /*
 Plugin Name: Intermediate Image Sizes
 Description: Create thumbnails on the fly instead of storing them on disk
-Version: 0.3.2
+Version: 0.3.3
 Author: Headspin <vegard@headspin.no>
 Author URI: http://www.headspin.no
 Licence: GPL2
 */
-class ImageSize {
+class IntermediateImageSizes {
 
 	private $htaccessPath = '';
 
@@ -18,7 +18,7 @@ class ImageSize {
 			register_deactivation_hook(__FILE__, array($this, 'deactivate'));
 
 			// Stop WordPress from storing thumbnails
-			add_filter( 'intermediate_image_sizes_advanced', '__return_empty_array' );
+			add_filter('intermediate_image_sizes_advanced', '__return_empty_array');
 		}
 		else {
 
@@ -47,20 +47,20 @@ class ImageSize {
 		$filePath = 'wp-content' . $parts[1];
 
 		$rewriteRules = <<< HTACCESS
-# BEGIN Wordpress plugin ImageSize
+# BEGIN Wordpress plugin IntermediateImageSizes
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-s
 RewriteCond %{REQUEST_URI} (.+)-([0-9]+)x([0-9]+)\.(jpg|jpeg|png)$
 RewriteRule (.+)-([0-9]+)x([0-9]+)\.(.+)$ ${filePath}?path=$1&width=$2&height=$3&ext=$4 [L]
 </IfModule>
-# END Wordpress plugin ImageSize
+# END Wordpress plugin IntermediateImageSizes
 
 HTACCESS;
 
 		$htaccess = @file_get_contents($this->htaccessPath);
 		if ($htaccess !== FALSE) {
-			if (strpos($htaccess, '# BEGIN Wordpress plugin ImageSize') === FALSE) {
+			if (strpos($htaccess, '# BEGIN Wordpress plugin IntermediateImageSizes') === FALSE) {
 				$htaccess = $rewriteRules . $htaccess;
 				file_put_contents($this->htaccessPath, $htaccess);
 			}
@@ -81,12 +81,19 @@ HTACCESS;
 		$htaccess = @file_get_contents($this->htaccessPath);
 
 		if ($htaccess !== FALSE) {
-			$newHtaccess = preg_replace('/# BEGIN Wordpress plugin ImageSize.*# END Wordpress plugin ImageSize\n/s',
+			$newHtaccess = preg_replace('/# BEGIN Wordpress plugin IntermediateImageSizes.*# END Wordpress plugin IntermediateImageSizes\n/s',
 				'', $htaccess);
 			if ($newHtaccess !== $htaccess) {
 				file_put_contents($this->htaccessPath, $newHtaccess);
 			}
 		}
+
+		// Regenerate thumbnails
+		/* DISABLED: This is too slow with a huge media library
+		 * Consider using a background thread
+		 * ini_set('max_execution_time', 1800); // This may take some time
+		 * $this->regenerateThumbnails();
+		*/
 	}
 
 	private function handleRequest() {
@@ -227,40 +234,89 @@ HTACCESS;
 	}
 
 	private function deleteThumbnails($folder=NULL) {
+		$imageIds = $this->getImageIds();
 
-		if ($folder === NULL) {
-			$uploadDir = wp_upload_dir();
-			$folder = $uploadDir['basedir'];
-		}
+		foreach ($imageIds as $id) {
+			$image = get_post($id);
+			$fullsizepath = get_attached_file($image->ID);
 
-		if (is_dir($folder)) {
-			$dh = opendir($folder);
-			while (FALSE !== ($filename = readdir($dh))) {
-
-				// Ignore these files/folders
-				if (in_array($filename, array('..', '.', '')))
-					continue;
-
-				$path = $folder . '/' . $filename;
-
-				// Delete recursively
-				if (is_dir($path)) {
-					$this->deleteThumbnails($path);
-				}
-				else {
-					if ($this->isThumbnailFile($filename))
-						@unlink($path);
-				}
-			}
+			if (false !== $fullsizepath && file_exists($fullsizepath))
+				$this->remove_old_images($image->ID);
 		}
 	}
 
-	private function isThumbnailFile($filename) {
-		$pattern = '/(.+)-([0-9]+)x([0-9]+)\.(jpg|jpeg|png)$/';
-		preg_match($pattern, $filename, $matches);
-		return $matches;
+	// Get IDs of all WordPress images
+	private function getImageIds() {
+		$ids = array();
+
+		$query_args = array(
+			'post_type' => 'attachment',
+			'post_mime_type' => 'image',
+			'post_status' => 'any',
+			'posts_per_page' => -1,
+			'fields' => 'ids'
+		);
+		$images = new WP_Query($query_args);
+
+		if ($images->post_count) {
+			foreach ($images->posts as $id)
+				$ids[] = $id;
+		}
+
+		return $ids;
+	}
+
+
+	// Regenerate Thumbnails (from wp-cli)
+	private function regenerateThumbnails() {
+
+		// Remove our override
+		remove_filter('intermediate_image_sizes_advanced', '__return_empty_array');
+
+		$imageIds = $this->getImageIds();
+
+		foreach ( $imageIds as $id ) {
+			$this->process_regeneration( $id );
+		}
+	}
+
+	private function process_regeneration( $id ) {
+		$image = get_post( $id );
+		$fullsizepath = get_attached_file( $image->ID );
+		if ( false === $fullsizepath || !file_exists( $fullsizepath ) ) {
+			return;
+		}
+		$this->remove_old_images( $image->ID );
+		$metadata = wp_generate_attachment_metadata( $image->ID, $fullsizepath );
+		if ( is_wp_error( $metadata ) ) {
+			return;
+		}
+		if ( empty( $metadata ) ) {
+			return;
+		}
+		wp_update_attachment_metadata( $image->ID, $metadata );
+	}
+
+	private function remove_old_images( $att_id ) {
+		$wud = wp_upload_dir();
+		$metadata = wp_get_attachment_metadata( $att_id );
+		if ( false === $metadata || !isset( $metadata['file'] ) ) {
+			return;
+		}
+		$dir_path = $wud['basedir'] . '/' . dirname( $metadata['file'] ) . '/';
+		$original_path = $dir_path . basename( $metadata['file'] );
+		if ( empty( $metadata['sizes'] ) ) {
+			return;
+		}
+		foreach ( $metadata['sizes'] as $size_info ) {
+			$intermediate_path = $dir_path . $size_info['file'];
+			if ( $intermediate_path == $original_path )
+				continue;
+			if ( file_exists( $intermediate_path ) )
+				unlink( $intermediate_path );
+		}
 	}
 
 }
 
-new ImageSize();
+new IntermediateImageSizes();

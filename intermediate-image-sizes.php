@@ -2,7 +2,7 @@
 /*
 Plugin Name: Intermediate Image Sizes
 Description: Create thumbnails on the fly instead of storing them on disk
-Version: 0.3.3
+Version: 0.3.4
 Author: Headspin <vegard@headspin.no>
 Author URI: http://www.headspin.no
 Licence: GPL2
@@ -19,6 +19,10 @@ class IntermediateImageSizes {
 
 			// Stop WordPress from storing thumbnails
 			add_filter('intermediate_image_sizes_advanced', '__return_empty_array');
+
+			/* Override image_downsize since the previous filter prevents
+			 * wp_get_attachment_metadata to know about the thumbnail sizes */
+			add_filter('image_downsize', array($this, 'imageDownsizeFilter'), 10, 3);
 		}
 		else {
 
@@ -91,7 +95,7 @@ HTACCESS;
 		// Regenerate thumbnails
 		/* DISABLED: This is too slow with a huge media library
 		 * Consider using a background thread
-		 * ini_set('max_execution_time', 1800); // This may take some time
+		 * ini_set('max_execution_time', 600); // This may take some time
 		 * $this->regenerateThumbnails();
 		*/
 	}
@@ -315,6 +319,56 @@ HTACCESS;
 			if ( file_exists( $intermediate_path ) )
 				unlink( $intermediate_path );
 		}
+	}
+
+	public function imageDownsizeFilter($downsize, $id, $size) {
+		$imgUrl = wp_get_attachment_url($id);
+		$sizes = $this->getImageSizes($size);
+
+		$imgUrlArr = explode('.', $imgUrl);
+		$ext = array_pop($imgUrlArr);
+
+		$imgUrl = implode('.', $imgUrlArr) . '-' . $sizes['width'] . 'x' . $sizes['height'] . '.' . $ext;
+
+		return array($imgUrl, $sizes['width'], $sizes['height'], true);
+	}
+
+	private function getImageSizes($size='') {
+
+		global $_wp_additional_image_sizes;
+
+		$sizes = array();
+		$get_intermediate_image_sizes = get_intermediate_image_sizes();
+
+		// Create the full array with sizes and crop info
+		foreach ($get_intermediate_image_sizes as $_size) {
+
+			if (in_array($_size, array('thumbnail', 'medium', 'large'))) {
+
+				$sizes[$_size]['width'] = get_option($_size . '_size_w');
+				$sizes[$_size]['height'] = get_option($_size . '_size_h');
+				$sizes[$_size]['crop'] = (bool) get_option($_size . '_crop');
+
+			} elseif (isset($_wp_additional_image_sizes[$_size])) {
+
+					$sizes[$_size] = array(
+						'width' => $_wp_additional_image_sizes[$_size]['width'],
+						'height' => $_wp_additional_image_sizes[$_size]['height'],
+						'crop' =>  $_wp_additional_image_sizes[$_size]['crop']
+					);
+			}
+		}
+
+		// Get only 1 size if found
+		if ($size) {
+			if (isset($sizes[$size])) {
+				return $sizes[$size];
+			} else {
+				return false;
+			}
+		}
+
+		return $sizes;
 	}
 
 }

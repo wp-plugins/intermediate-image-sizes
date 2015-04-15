@@ -3,7 +3,7 @@ Contributors: veloek
 Tags: image, thumbnail, media, library
 Requires at least: 3.0
 Tested up to: 4.1.1
-Stable tag: 0.3.4
+Stable tag: 0.3.5
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,9 @@ Reads size from URL. You need only add -[width]x[height] to the image path (like
 WARNING: This plugin deletes all current thumbnails and stops Wordpress from generating new thumbnails to keep the uploads folder clean of unnecessary files. If you ever choose to disable this plugin, use a plugin like [Regenerate Thumbnails](https://wordpress.org/plugins/regenerate-thumbnails/) to, well, regenerate the thumbnails.
 
 == Changelog ==
+
+= 0.3.5 =
+* Bugfix in image_downsize filter
 
 = 0.3.4 =
 * Add a workaround to missing image sizes

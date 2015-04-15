@@ -2,7 +2,7 @@
 /*
 Plugin Name: Intermediate Image Sizes
 Description: Create thumbnails on the fly instead of storing them on disk
-Version: 0.3.4
+Version: 0.3.5
 Author: Headspin <vegard@headspin.no>
 Author URI: http://www.headspin.no
 Licence: GPL2
@@ -244,7 +244,7 @@ HTACCESS;
 			$image = get_post($id);
 			$fullsizepath = get_attached_file($image->ID);
 
-			if (false !== $fullsizepath && file_exists($fullsizepath))
+			if (FALSE !== $fullsizepath && file_exists($fullsizepath))
 				$this->remove_old_images($image->ID);
 		}
 	}
@@ -287,7 +287,7 @@ HTACCESS;
 	private function process_regeneration( $id ) {
 		$image = get_post( $id );
 		$fullsizepath = get_attached_file( $image->ID );
-		if ( false === $fullsizepath || !file_exists( $fullsizepath ) ) {
+		if ( FALSE === $fullsizepath || !file_exists( $fullsizepath ) ) {
 			return;
 		}
 		$this->remove_old_images( $image->ID );
@@ -304,7 +304,7 @@ HTACCESS;
 	private function remove_old_images( $att_id ) {
 		$wud = wp_upload_dir();
 		$metadata = wp_get_attachment_metadata( $att_id );
-		if ( false === $metadata || !isset( $metadata['file'] ) ) {
+		if ( FALSE === $metadata || !isset( $metadata['file'] ) ) {
 			return;
 		}
 		$dir_path = $wud['basedir'] . '/' . dirname( $metadata['file'] ) . '/';
@@ -323,14 +323,24 @@ HTACCESS;
 
 	public function imageDownsizeFilter($downsize, $id, $size) {
 		$imgUrl = wp_get_attachment_url($id);
-		$sizes = $this->getImageSizes($size);
 
-		$imgUrlArr = explode('.', $imgUrl);
-		$ext = array_pop($imgUrlArr);
+		if (is_string($size))
+			$sizes = $this->getImageSizes($size);
+		else if (is_array($size))
+			$sizes = array('width' => $size[0], 'height' => $size[1]);
+		else
+			return FALSE;
 
-		$imgUrl = implode('.', $imgUrlArr) . '-' . $sizes['width'] . 'x' . $sizes['height'] . '.' . $ext;
+		if ($sizes !== FALSE) {
+			$imgUrlArr = explode('.', $imgUrl);
+			$ext = array_pop($imgUrlArr);
 
-		return array($imgUrl, $sizes['width'], $sizes['height'], true);
+			$imgUrl = implode('.', $imgUrlArr) . '-' . $sizes['width'] . 'x' . $sizes['height'] . '.' . $ext;
+
+			return array($imgUrl, $sizes['width'], $sizes['height'], TRUE);
+		} else {
+			return array($imgUrl, 0, 0, FALSE);
+		}
 	}
 
 	private function getImageSizes($size='') {
@@ -364,7 +374,7 @@ HTACCESS;
 			if (isset($sizes[$size])) {
 				return $sizes[$size];
 			} else {
-				return false;
+				return FALSE;
 			}
 		}
 

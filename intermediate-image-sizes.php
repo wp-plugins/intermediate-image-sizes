@@ -2,7 +2,7 @@
 /*
 Plugin Name: Intermediate Image Sizes
 Description: Create thumbnails on the fly instead of storing them on disk
-Version: 0.3.5
+Version: 0.3.6
 Author: Headspin <vegard@headspin.no>
 Author URI: http://www.headspin.no
 Licence: GPL2
@@ -55,7 +55,7 @@ class IntermediateImageSizes {
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-s
-RewriteCond %{REQUEST_URI} (.+)-([0-9]+)x([0-9]+)\.(jpg|jpeg|png)$
+RewriteCond %{REQUEST_URI} (.+)-([0-9]+)x([0-9]+)\.(jpg|jpeg|png)$ [NC]
 RewriteRule (.+)-([0-9]+)x([0-9]+)\.(.+)$ ${filePath}?path=$1&width=$2&height=$3&ext=$4 [L]
 </IfModule>
 # END Wordpress plugin IntermediateImageSizes

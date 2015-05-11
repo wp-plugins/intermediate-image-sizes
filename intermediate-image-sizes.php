@@ -2,7 +2,7 @@
 /*
 Plugin Name: Intermediate Image Sizes
 Description: Create thumbnails on the fly instead of storing them on disk
-Version: 0.3.6
+Version: 0.3.7
 Author: Headspin <vegard@headspin.no>
 Author URI: http://www.headspin.no
 Licence: GPL2
@@ -55,7 +55,7 @@ class IntermediateImageSizes {
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-s
-RewriteCond %{REQUEST_URI} (.+)-([0-9]+)x([0-9]+)\.(jpg|jpeg|png)$ [NC]
+RewriteCond %{REQUEST_URI} (.+)-([0-9]+)x([0-9]+)\.(jpg|jpeg|png|gif)$ [NC]
 RewriteRule (.+)-([0-9]+)x([0-9]+)\.(.+)$ ${filePath}?path=$1&width=$2&height=$3&ext=$4 [L]
 </IfModule>
 # END Wordpress plugin IntermediateImageSizes
@@ -127,7 +127,7 @@ HTACCESS;
 		if (!file_exists($filename) && file_exists($fullname))
 			$filename = $fullname;
 
-		$httpType = $ext === 'png' ? 'png' : 'jpeg';
+		$httpType = $ext === 'png' ? 'png' : ($ext === 'gif' ? 'gif' : 'jpeg');
 		header('Content-Type: image/' . $httpType);
 
 		// Caching
@@ -193,7 +193,12 @@ HTACCESS;
 		}
 
 		$image = $ext === 'png' ?
-			imagecreatefrompng($filename) : imagecreatefromjpeg($filename);
+			imagecreatefrompng($filename) :
+			($ext === 'gif' ?
+				imagecreatefromgif($filename) :
+				imagecreatefromjpeg($filename));
+
+		// Enable transparency for PNGs
 		if ($ext === 'png') imagealphablending($image, TRUE);
 
 		$newImage = imagecreatetruecolor($newWidth, $newHeight);
@@ -207,6 +212,8 @@ HTACCESS;
 
 		if ($ext === 'png')
 			imagepng($newImage, null, 0);
+		elseif ($ext === 'gif')
+			imagegif($newImage, null, 0);
 		else
 			imagejpeg($newImage, null, 100);
 	}
